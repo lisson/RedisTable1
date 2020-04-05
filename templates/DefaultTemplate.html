@@ -1,0 +1,21 @@
+<html>
+    <head>
+    </head>
+    <body>
+        <table id="main">
+            <tr id="title">
+                {{#title}}
+                <td>{{.}}</td>
+                {{/title}}
+            </tr>
+            {{#data}}
+                <tr>
+                    {{#.}}
+                    <td>{{.}}</td>
+                    {{/.}}
+                </tr>
+            {{/data}}
+            
+        </table>
+    </body>
+</html>
