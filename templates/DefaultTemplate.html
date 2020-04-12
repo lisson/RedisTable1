@@ -9,13 +9,17 @@
                 {{/title}}
             </tr>
             {{#data}}
-                <tr>
-                    {{#.}}
+            <tr id="{{id}}">
+                    {{#dataArray}}
                     <td>{{.}}</td>
-                    {{/.}}
+                    {{/dataArray}}
                 </tr>
             {{/data}}
-            
         </table>
+        <div id="controls">
+            <span id="addRow">
+                <a href="#" id="addButton">Add Row</a>
+            </span>
+        </div>
     </body>
 </html>
