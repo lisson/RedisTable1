@@ -4,10 +4,15 @@ const sqlite3 = require('sqlite3')
 const mustache = require('mustache')
 const fs = require('fs')
 const DBPATH = "./default.db"
-const TitleTable = "Column_Titles"
+const TitleTable = "Title_Table"
 const DataTable = "Data_Table"
+const RowTable = "Row_Table"
+var path = require('path');
 
 var app = express();
+app.use('/static', express.static(path.join(__dirname, 'static')))
+app.use(express.urlencoded())
+
 
 var config = require('./config.json')
 var titles = []
@@ -28,10 +33,13 @@ function Init()
         let createTitle = "CREATE TABLE IF NOT EXISTS " + TitleTable + " (id INTEGER PRIMARY KEY AUTOINCREMENT, title varchar(255));"
         db.run(createTitle)
 
-        let createData = "CREATE TABLE IF NOT EXISTS " + DataTable + " (id INTEGER PRIMARY KEY AUTOINCREMENT, TitleId INTEGER, value varchar(255), FOREIGN KEY(TitleId) REFERENCES " + TitleTable + "(title));";
+        let createRow = "CREATE TABLE IF NOT EXISTS " + RowTable + " (RowId INTEGER PRIMARY KEY AUTOINCREMENT);"
+        db.run(createRow)
+
+        let createData = "CREATE TABLE IF NOT EXISTS " + DataTable + " (dataId INTEGER PRIMARY KEY AUTOINCREMENT, RowId INTEGER, TitleId INTEGER, value varchar(255), FOREIGN KEY(TitleId) REFERENCES " + TitleTable + "(id), FOREIGN KEY(RowId) References " + RowTable + "(RowId));";
         db.run(createData)
 
-        let titleQuery = "SELECT Title FROM Column_Titles;"
+        let titleQuery = "SELECT * FROM " + TitleTable + ";"
         db.all(titleQuery, [], (err, rows) => {
             if (err)
             {
@@ -72,15 +80,22 @@ function Init()
                 }
                 titles=[]
                 rows.forEach((r) => {
-                    titles.push(r.title)
+                    titles.push({"titleId":r.id, "title": r.title})
                 })
             })
         });
     });
 }
 
+function _GetTable()
+{
+    let allDataQuery = "SELECT * FROM " + DataTable + ";"
+    db.all(allDataQuery, [], (err, rows) => {
+        return rows
+    })
+}
+
 var DefaultTemplate = fs.readFileSync('./templates/DefaultTemplate.html', 'utf-8')
-//console.log(DefaultTemplate)
 
 const hostname = '0.0.0.0';
 
@@ -88,20 +103,45 @@ const port = 3000;
 
 app.get('/', (req, res) => {
     res.statusCode = 200;
-    res.setHeader('Content-Type', 'text/html');
-    var data = { title: titles,
-    data: [
-        {id: 1, dataArray: ["Item1","Item2"]},
-        {id: 2, dataArray: ["Item2","Item2"]}]
+    res.send(mustache.render(DefaultTemplate, {title: titles, columns: titles.length}));
+});
+
+app.post('/addRow', (req, res) => {
+    let insertRow = db.prepare("INSERT into  " + RowTable + " VALUES (null);")
+    insertRow.run(function(err) {
+        if(err)
+        {
+            res.status(400).send("Database error.")
+            console.log(err)
+        }
+        console.log(this.lastID)
+        res.setHeader('Content-Type', 'text/json');
+        res.send({"lastID": this.lastID})
+    })
+});
+
+app.post('/modifyBox', (req, res) => {
+
+    if(req.body.BoxId === undefined)
+    {
+        res.status(400).send("Box ID not defined.")
     }
-    res.send(mustache.render(DefaultTemplate, data));
-});
+})
 
-app.post('/register', (reg, res) => {
-    res.send("register");
-});
+app.get('/getTable', (req, res) => { 
+    let allDataQuery = "SELECT * FROM " + DataTable + ";"
+    db.all(allDataQuery, [], (err, rows) => {
+        res.setHeader('Content-Type', 'text/json');
+        res.send(rows)
+    })
+})
 
-app.get('/titles', (reg, res) => {
+app.get('/test', (req, res) => { 
+    console.log(_GetTable())
+    res.send("test")
+})
+
+app.get('/titles', (req, res) => {
     res.statusCode = 200;
     res.setHeader('Content-Type', 'text/json');
     res.send(titles)

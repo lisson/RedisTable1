@@ -1,6 +1,4 @@
-node_modules
-build
-npm-debug.log
-.env
-.DS_Store
 default.db
+*.sql
+node_modules
+.default.db

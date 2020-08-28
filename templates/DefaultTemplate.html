@@ -1,24 +1,23 @@
 <html>
     <head>
+        <script src="static/page.js"></script>
+        <link rel="stylesheet" type="text/css" href="static/page.css">
     </head>
     <body>
-        <table id="main">
+        <table id="mainTable" data-columns="{{columns}}">
             <tr id="title">
                 {{#title}}
-                <td>{{.}}</td>
+                {{#.}}
+                <th data-titleId="{{titleId}}">
+                    {{title}}
+                </th>
+                {{/.}}
                 {{/title}}
             </tr>
-            {{#data}}
-            <tr id="{{id}}">
-                    {{#dataArray}}
-                    <td>{{.}}</td>
-                    {{/dataArray}}
-                </tr>
-            {{/data}}
         </table>
         <div id="controls">
             <span id="addRow">
-                <a href="#" id="addButton">Add Row</a>
+                <button id="addButton">Add Row</button>
             </span>
         </div>
     </body>
