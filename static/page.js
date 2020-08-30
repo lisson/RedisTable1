@@ -7,7 +7,6 @@ function UpdateTable()
     xmlHttp.open( "GET", "getTable", false ); // false for synchronous request
     xmlHttp.send( null );
     let data = JSON.parse(xmlHttp.responseText)
-    data[3].RowId = 10;
     console.log(data);
     var byRow = data.slice(0);
     byRow.sort(function(a,b) {
@@ -37,6 +36,8 @@ function UpdateTable()
                 databox.dataset.titleid = title.children[i].dataset.titleid
                 databox.className = "dataValue";
                 databox.contentEditable = true;
+                databox.addEventListener("input", tableBoxDataHandler, false);
+                databox.addEventListener("focusout", focusOutHandler, false);
                 currentRow.appendChild(databox);
             }
         }
@@ -47,6 +48,7 @@ function UpdateTable()
             return
         }
         b.textContent = item.value;
+        b.id = "box" +item.id
         currentRowIndex = item.RowId;
     });
 }
@@ -97,9 +99,12 @@ function tableBoxDataHandler()
     console.log(this.parentNode)
 }
 
-
 function focusOutHandler()
 {
-    console.log("Focus out");
-    console.log(this.parentNode)
+    var dataId = this.id.substring(3,this.id.length)
+    var payload = JSON.stringify({"DataId": dataId, "DataValue": this.textContent})
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.open("POST", "/updateDataValue");
+    xmlHttp.setRequestHeader("Content-Type", "application/json");
+    xmlHttp.send(payload);
 }

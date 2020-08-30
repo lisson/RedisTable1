@@ -4,14 +4,17 @@ const sqlite3 = require('sqlite3')
 const mustache = require('mustache')
 const fs = require('fs')
 const DBPATH = "./default.db"
+
 const TitleTable = "Title_Table"
 const DataTable = "Data_Table"
 const RowTable = "Row_Table"
+
 var path = require('path');
 
 var app = express();
 app.use('/static', express.static(path.join(__dirname, 'static')))
 app.use(express.urlencoded())
+app.use(express.json());
 
 
 var config = require('./config.json')
@@ -120,12 +123,9 @@ app.post('/addRow', (req, res) => {
     })
 });
 
-app.post('/modifyBox', (req, res) => {
-
-    if(req.body.BoxId === undefined)
-    {
-        res.status(400).send("Box ID not defined.")
-    }
+app.post('/updateDataValue', (req, res) => {
+    db.run("UPDATE " + DataTable + " SET VALUE = ? WHERE id = ?;", [req.body.DataValue, req.body.DataId])
+    res.sendStatus(200);
 })
 
 app.get('/getTable', (req, res) => { 
