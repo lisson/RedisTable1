@@ -1,4 +1,6 @@
 var TitleToColumnMapping = [];
+var Titles;
+const focusOutEvent = new Event('focusout');
 
 function UpdateTable()
 {
@@ -14,7 +16,6 @@ function UpdateTable()
     });
 
     var mainTable = document.getElementById("mainTable")
-    var title = document.getElementById("title")
 
     while(mainTable.childElementCount > 1)
     {
@@ -27,19 +28,23 @@ function UpdateTable()
         if(item.RowId != currentRowIndex)
         {
             currentRow = document.createElement("tr")
-            currentRow.dataset.RowId = item.RowId;
             currentRow.id = "row" + item.RowId;
             mainTable.appendChild(currentRow);
-            for(i=0;i<title.childElementCount;i++)
+            for(i=0;i<Titles.childElementCount;i++)
             {
                 var databox = document.createElement("td")
-                databox.dataset.titleid = title.children[i].dataset.titleid
+                databox.dataset.titleid = Titles.children[i].dataset.titleid
                 databox.className = "dataValue";
                 databox.contentEditable = true;
                 databox.addEventListener("input", tableBoxDataHandler, false);
                 databox.addEventListener("focusout", focusOutHandler, false);
                 currentRow.appendChild(databox);
             }
+            databox = document.createElement("td")
+            databox.textContent = "x"
+            databox.className = "DeleteRowButtonClass"
+            databox.addEventListener("click", deleteRowHandler, false);
+            currentRow.appendChild(databox)
         }
         var b = currentRow.children[TitleToColumnMapping[item.TitleId]]
         
@@ -66,9 +71,25 @@ function main()
     });
 
     var mainTable = document.getElementById("mainTable");
+    Titles = document.getElementById("title")
 
     document.getElementById("addButton").addEventListener('click', function (event) {
         this.disabled=true;
+
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.open("POST", "/addRow");
+        xmlHttp.setRequestHeader("Content-Type", "application/json");
+        xmlHttp.onreadystatechange = function() {
+            if (xmlHttp.readyState == XMLHttpRequest.DONE) {
+                console.log(xmlHttp.responseText);
+                var r = JSON.parse(xmlHttp.responseText);
+                console.log(r);
+                row.id = "row" + r.lastID;
+                row.children[0].textContent = "free"
+                row.children[0].dispatchEvent(focusOutEvent)
+            }
+        }
+
         var row = document.createElement("tr");
         for(var i = 0; i < mainTable.dataset.columns; i++)
         {
@@ -77,16 +98,18 @@ function main()
             d.addEventListener("input", tableBoxDataHandler, false);
             d.addEventListener("focusout", focusOutHandler, false);
             d.className = "dataValue"
+            d.dataset.titleid = Titles.children[i].dataset.titleid
             row.appendChild(d)
         }
         mainTable.appendChild(row)
+
+        xmlHttp.send();
         this.disabled=false;
     });
 
-    var title = document.getElementById("title")
     for(i=0;i<title.children.length;i++)
     {
-        TitleToColumnMapping[title.children[i].dataset.titleid] = i;
+        TitleToColumnMapping[Titles.children[i].dataset.titleid] = i;
     }
     //console.log(TitleToColumnMapping)
 
@@ -95,16 +118,47 @@ function main()
 
 function tableBoxDataHandler()
 {
-    console.log(this.textContent);
-    console.log(this.parentNode)
+    return
 }
 
 function focusOutHandler()
 {
+    if(this.id === "")
+    {
+        console.log("NEW BOX")
+        var RowId = this.parentNode.id.substring(3,this.parentNode.id.length)
+        var payload = JSON.stringify({"RowId": RowId, "TitleId": this.dataset.titleid, "value": this.textContent})    
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.open("POST", "/insertDataValue");
+        xmlHttp.setRequestHeader("Content-Type", "application/json");
+        xmlHttp.onreadystatechange = function() {
+            if (xmlHttp.readyState == XMLHttpRequest.DONE) {
+                console.log(xmlHttp.responseText);
+                var r = JSON.parse(xmlHttp.responseText);
+                console.log(r);
+                console.log(this)
+                this.id = "box" + r.lastID
+            }
+        }
+        xmlHttp.send(payload);
+        return
+    }
     var dataId = this.id.substring(3,this.id.length)
     var payload = JSON.stringify({"DataId": dataId, "DataValue": this.textContent})
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.open("POST", "/updateDataValue");
     xmlHttp.setRequestHeader("Content-Type", "application/json");
     xmlHttp.send(payload);
+}
+
+function deleteRowHandler()
+{
+    console.log("Deleting " + this.parentNode.id);
+    var RowId = this.parentNode.id.substring(3,this.parentNode.id.length)
+    var payload = JSON.stringify({"RowId": RowId})
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.open("POST", "/deleteRow");
+    xmlHttp.setRequestHeader("Content-Type", "application/json");
+    xmlHttp.send(payload);
+    this.parentNode.remove()
 }

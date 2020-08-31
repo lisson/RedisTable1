@@ -128,6 +128,29 @@ app.post('/updateDataValue', (req, res) => {
     res.sendStatus(200);
 })
 
+app.post('/insertDataValue', (req, res) => {
+    let insertData = db.prepare("INSERT into  " + DataTable + "(RowId, TitleId, value) VALUES (?,?,?);", [req.body.RowId, req.body.TitleId, req.body.Value])
+    insertData.run(function(err) {
+        if(err)
+        {
+            res.status(400).send("Database error.")
+            console.log(err)
+        }
+        console.log(this.lastID)
+        res.setHeader('Content-Type', 'text/json');
+        res.send({"lastID": this.lastID})
+    })
+    insertData.finalize();
+})
+
+app.post('/deleteRow', (req, res) => {
+    let deleteRow = db.prepare("DELETE FROM " + DataTable + " WHERE RowId = ?;", [req.body.RowId])
+    deleteRow.run();
+    deleteRow = db.prepare("DELETE FROM " + RowTable + " WHERE RowId = ?;", [req.body.RowId])
+    deleteRow.run();
+    res.sendStatus(200)
+})
+
 app.get('/getTable', (req, res) => { 
     let allDataQuery = "SELECT * FROM " + DataTable + ";"
     db.all(allDataQuery, [], (err, rows) => {
