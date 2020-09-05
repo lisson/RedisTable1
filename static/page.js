@@ -38,6 +38,7 @@ function UpdateTable()
                 databox.contentEditable = true;
                 databox.addEventListener("input", tableBoxDataHandler, false);
                 databox.addEventListener("focusout", focusOutHandler, false);
+                databox.addEventListener("keypress", databoxKeyPressHandler, false);
                 currentRow.appendChild(databox);
             }
             databox = document.createElement("td")
@@ -68,6 +69,7 @@ function main()
     Array.prototype.forEach.call(dataItems, function(item) {
         item.addEventListener("input", tableDataHandler, false);
         item.addEventListener("focusout", focusOutHandler, false);
+        item.addEventListener("keypress", databoxKeyPressHandler, false);
     });
 
     var mainTable = document.getElementById("mainTable");
@@ -81,11 +83,10 @@ function main()
         xmlHttp.setRequestHeader("Content-Type", "application/json");
         xmlHttp.onreadystatechange = function() {
             if (xmlHttp.readyState == XMLHttpRequest.DONE) {
-                console.log(xmlHttp.responseText);
                 var r = JSON.parse(xmlHttp.responseText);
                 console.log(r);
                 row.id = "row" + r.lastID;
-                row.children[0].textContent = "free"
+                row.children[0].textContent = "Free"
                 row.children[0].dispatchEvent(focusOutEvent)
             }
         }
@@ -97,6 +98,7 @@ function main()
             d.contentEditable = "True"
             d.addEventListener("input", tableBoxDataHandler, false);
             d.addEventListener("focusout", focusOutHandler, false);
+            d.addEventListener("keypress", databoxKeyPressHandler, false);
             d.className = "dataValue"
             d.dataset.titleid = Titles.children[i].dataset.titleid
             row.appendChild(d)
@@ -127,16 +129,16 @@ function focusOutHandler()
     {
         console.log("NEW BOX")
         var RowId = this.parentNode.id.substring(3,this.parentNode.id.length)
-        var payload = JSON.stringify({"RowId": RowId, "TitleId": this.dataset.titleid, "value": this.textContent})    
+        console.log(this.textContent)
+        var payload = JSON.stringify({"RowId": RowId, "TitleId": this.dataset.titleid, "value": this.textContent})
         var xmlHttp = new XMLHttpRequest();
         xmlHttp.open("POST", "/insertDataValue");
         xmlHttp.setRequestHeader("Content-Type", "application/json");
         xmlHttp.onreadystatechange = function() {
             if (xmlHttp.readyState == XMLHttpRequest.DONE) {
-                console.log(xmlHttp.responseText);
+                //console.log(xmlHttp.responseText);
                 var r = JSON.parse(xmlHttp.responseText);
                 console.log(r);
-                console.log(this)
                 this.id = "box" + r.lastID
             }
         }
@@ -149,6 +151,14 @@ function focusOutHandler()
     xmlHttp.open("POST", "/updateDataValue");
     xmlHttp.setRequestHeader("Content-Type", "application/json");
     xmlHttp.send(payload);
+}
+
+function databoxKeyPressHandler(e)
+{    
+    if(e.code === "Enter" || e.code == "NumpadEnter")
+    {
+        this.blur()
+    }
 }
 
 function deleteRowHandler()

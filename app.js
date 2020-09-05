@@ -129,7 +129,7 @@ app.post('/updateDataValue', (req, res) => {
 })
 
 app.post('/insertDataValue', (req, res) => {
-    let insertData = db.prepare("INSERT into  " + DataTable + "(RowId, TitleId, value) VALUES (?,?,?);", [req.body.RowId, req.body.TitleId, req.body.Value])
+    let insertData = db.prepare("INSERT into  " + DataTable + "(RowId, TitleId, value) VALUES (?,?,?);", [req.body.RowId, req.body.TitleId, req.body.value])
     insertData.run(function(err) {
         if(err)
         {
