@@ -151,17 +151,22 @@ app.post('/deleteRow', (req, res) => {
     res.sendStatus(200)
 })
 
+app.get('/getFreeRows', (req, res) => {
+    let allFreeQuery = "SELECT A.* FROM " + DataTable + " A, " + DataTable + " B " + 
+    "WHERE A.TitleId = 1 AND (A.value = 'Free' OR A.value='free') \
+    AND A.Id <> B.Id AND A.RowId = B.RowId;"
+    db.all(allFreeQuery, [], (err, rows) => {
+        res.setHeader('Content-Type', 'text/json');
+        res.send(rows)
+    })
+})
+
 app.get('/getTable', (req, res) => { 
     let allDataQuery = "SELECT * FROM " + DataTable + ";"
     db.all(allDataQuery, [], (err, rows) => {
         res.setHeader('Content-Type', 'text/json');
         res.send(rows)
     })
-})
-
-app.get('/test', (req, res) => { 
-    console.log(_GetTable())
-    res.send("test")
 })
 
 app.get('/titles', (req, res) => {
