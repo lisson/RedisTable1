@@ -1,0 +1,8 @@
+SET Row:0:Platform Windows
+SET Row:1:Platform Windows
+SET Row:2:Platform Windows
+SET "Row:0:IP Address" 10.0.0.2
+SET "Row:1:IP Address" 10.0.0.3
+SET "Row:2:IP Address" 10.0.0.4
+SET "Row:0:Title3" customvalue0
+SET "Row:1:Title3" customvalue1

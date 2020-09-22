@@ -1,13 +1,13 @@
+const redis = require("redis");
+const client = redis.createClient();
 const express = require('express')
 const http = require('http');
-const sqlite3 = require('sqlite3')
 const mustache = require('mustache')
 const fs = require('fs')
-const DBPATH = "./default.db"
 
-const TitleTable = "Title_Table"
-const DataTable = "Data_Table"
-const RowTable = "Row_Table"
+// Redis Schema
+// ROW:<int>:TITLE = VALUE
+
 
 var path = require('path');
 
@@ -17,85 +17,46 @@ app.use(express.urlencoded())
 app.use(express.json());
 
 
-var config = require('./config.json')
+var config = require('./config.json');
+const { query } = require("express");
 var titles = []
-var db;
 
+client.on("error", function(error) {
+    console.error(error);
+  });
+
+var titlesCounter = 0;
 function Init()
 {
-    db = new sqlite3.Database(DBPATH, sqlite3.OPEN_READWRITE, (err) => {
-        if(err) {
-            console.error(err.message);
-        }
-        console.log("Connected to" + DBPATH)
-    });
-
-
-    db.serialize(function() {
-
-        let createTitle = "CREATE TABLE IF NOT EXISTS " + TitleTable + " (id INTEGER PRIMARY KEY AUTOINCREMENT, title varchar(255));"
-        db.run(createTitle)
-
-        let createRow = "CREATE TABLE IF NOT EXISTS " + RowTable + " (RowId INTEGER PRIMARY KEY AUTOINCREMENT);"
-        db.run(createRow)
-
-        let createData = "CREATE TABLE IF NOT EXISTS " + DataTable + " (dataId INTEGER PRIMARY KEY AUTOINCREMENT, RowId INTEGER, TitleId INTEGER, value varchar(255), FOREIGN KEY(TitleId) REFERENCES " + TitleTable + "(id), FOREIGN KEY(RowId) References " + RowTable + "(RowId));";
-        db.run(createData)
-
-        let titleQuery = "SELECT * FROM " + TitleTable + ";"
-        db.all(titleQuery, [], (err, rows) => {
-            if (err)
+    // New item returns 1
+    // Existing item returns 0
+    // Ignore duplicate Titles
+    config.Columns.forEach(title => {
+        client.sadd("TitlesSet", title, function(err, replies) {
+            console.log(replies)
+            if(replies === 1)
             {
-                throw err;
+                client.rpush("TitlesList", title)
             }
-
-            rows.forEach((r) => {
-                titles.push(r.title)
-            })
-
-            if(config.Columns.includes("State"))
+            titlesCounter++;
+            if(titlesCounter === config.Columns.length)
             {
-                throw "Illegal title 'State'"
-            }
-
-            if(titles.includes("State") === false)
-            {
-                let insertTitle = db.prepare("INSERT into " + TitleTable + " (title) VALUES (?);")
-                insertTitle.run("State")
-                insertTitle.finalize()
-            }
-
-            config.Columns.forEach((c)  => {
-                if(titles.includes(c) === false)
-                {
-                    console.log("Inserting "+ c)
-                    let insertTitle = db.prepare("INSERT into " + TitleTable + " (title) VALUES (?);")
-                    insertTitle.run(c)
-                    insertTitle.finalize()
-                }
-            });
-
-            // Refresh the titles after populating it, otherwise first run would not show any titles
-            db.all(titleQuery, [], (err, rows) => {
-                if (err)
-                {
-                    throw err;
-                }
-                titles=[]
-                rows.forEach((r) => {
-                    titles.push({"titleId":r.id, "title": r.title})
+                // we need to wait til all the callbacks are done.
+                // Otherwise TitlesList will be null because not everything has been pushed
+                client.lrange("TitlesList","0","-1", function (err, replies) {
+                    if(!err){
+                        console.log(replies);
+                        titles = replies;
+                    }
                 })
-            })
-        });
+            }
+        })
     });
 }
 
 function _GetTable()
 {
-    let allDataQuery = "SELECT * FROM " + DataTable + ";"
-    db.all(allDataQuery, [], (err, rows) => {
-        return rows
-    })
+
 }
 
 var DefaultTemplate = fs.readFileSync('./templates/DefaultTemplate.html', 'utf-8')
@@ -152,7 +113,7 @@ app.post('/deleteRow', (req, res) => {
 })
 
 app.get('/getFreeRows', (req, res) => {
-    let allFreeQuery = "SELECT A.* FROM " + DataTable + " A, " + DataTable + " B " + 
+    let allFreeQuery = "SELECT A.* FROM " + DataTable + " A, " + DataTable + " B " +
     "WHERE A.TitleId = 1 AND (A.value = 'Free' OR A.value='free') \
     AND A.Id <> B.Id AND A.RowId = B.RowId;"
     db.all(allFreeQuery, [], (err, rows) => {
@@ -161,11 +122,34 @@ app.get('/getFreeRows', (req, res) => {
     })
 })
 
-app.get('/getTable', (req, res) => { 
-    let allDataQuery = "SELECT * FROM " + DataTable + ";"
-    db.all(allDataQuery, [], (err, rows) => {
-        res.setHeader('Content-Type', 'text/json');
-        res.send(rows)
+app.get('/getTable/:scanId', (req, res) => {
+    console.log("scan from " + req.params.scanId)
+    client.scan(req.params.scanId, "match", "Row*", function (err, replies) {
+        if(!err){
+            var result = [];
+            var keyValue = {}
+            console.log(replies)
+            result.push(replies[0]) // scan index
+            var queryTotal = 0
+            var keys = replies[1]
+            keys.forEach(key => {
+                client.get(key, function(err, reply) {
+                    if(!err)
+                    {
+                        keyValue[key] = reply
+                        queryTotal++
+                        console.log(queryTotal + "/" + keys.length)
+                        console.log(queryTotal == keys.length)
+                        if(queryTotal == keys.length)
+                        {
+                            result.push(keyValue)
+                            res.setHeader('Content-Type', 'text/json');
+                            res.send(result)
+                        }
+                    }
+                })
+            })
+        }
     })
 })
 
