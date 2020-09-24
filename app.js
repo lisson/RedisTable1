@@ -20,12 +20,35 @@ app.use(express.json());
 var config = require('./config.json');
 const { query } = require("express");
 var titles = []
+var DutIncrementCounter = "DutAutoIncrement"
 
 client.on("error", function(error) {
     console.error(error);
   });
 
 var titlesCounter = 0;
+
+function _deleteKey(startIndex, key)
+{
+    client.scan(startIndex, "match", key, function (err, replies)
+    {
+        if(err)
+        {
+            console.log(err)
+            return
+        }
+        var keys = replies[1]
+        keys.forEach(key => {
+            client.del(key)
+        })
+        if(replies[0] != 0)
+        {
+            _deleteKey(replies[0], key)
+        }
+        return
+    })
+}
+
 function Init()
 {
     // New item returns 1
@@ -52,11 +75,17 @@ function Init()
             }
         })
     });
-}
-
-function _GetTable()
-{
-
+    client.exists(DutIncrementCounter, function(err, replies)
+    {
+        if(!err)
+        {
+            if(replies == "0")
+            {
+                console.log("Adding counter")
+                client.set(DutIncrementCounter,"0")
+            }
+        }
+    })
 }
 
 var DefaultTemplate = fs.readFileSync('./templates/DefaultTemplate.html', 'utf-8')
@@ -71,60 +100,40 @@ app.get('/', (req, res) => {
 });
 
 app.post('/addRow', (req, res) => {
-    let insertRow = db.prepare("INSERT into  " + RowTable + " VALUES (null);")
-    insertRow.run(function(err) {
+    client.multi().incr(DutIncrementCounter).get(DutIncrementCounter).exec(function(err, replies)
+    {
         if(err)
         {
             res.status(400).send("Database error.")
             console.log(err)
         }
-        console.log(this.lastID)
         res.setHeader('Content-Type', 'text/json');
-        res.send({"lastID": this.lastID})
+        res.send({"lastID": replies[1]})
     })
 });
 
-app.post('/updateDataValue', (req, res) => {
-    db.run("UPDATE " + DataTable + " SET VALUE = ? WHERE id = ?;", [req.body.DataValue, req.body.DataId])
-    res.sendStatus(200);
-})
-
 app.post('/insertDataValue', (req, res) => {
-    let insertData = db.prepare("INSERT into  " + DataTable + "(RowId, TitleId, value) VALUES (?,?,?);", [req.body.RowId, req.body.TitleId, req.body.value])
-    insertData.run(function(err) {
+    client.set(req.body.key, req.body.value, function(err, reply) {
         if(err)
         {
             res.status(400).send("Database error.")
             console.log(err)
         }
-        console.log(this.lastID)
         res.setHeader('Content-Type', 'text/json');
-        res.send({"lastID": this.lastID})
-    })
-    insertData.finalize();
+        res.send(reply)
+    });
 })
 
 app.post('/deleteRow', (req, res) => {
-    let deleteRow = db.prepare("DELETE FROM " + DataTable + " WHERE RowId = ?;", [req.body.RowId])
-    deleteRow.run();
-    deleteRow = db.prepare("DELETE FROM " + RowTable + " WHERE RowId = ?;", [req.body.RowId])
-    deleteRow.run();
+    console.log(req.body.key)
+    _deleteKey(0, req.body.key + "*")
     res.sendStatus(200)
-})
-
-app.get('/getFreeRows', (req, res) => {
-    let allFreeQuery = "SELECT A.* FROM " + DataTable + " A, " + DataTable + " B " +
-    "WHERE A.TitleId = 1 AND (A.value = 'Free' OR A.value='free') \
-    AND A.Id <> B.Id AND A.RowId = B.RowId;"
-    db.all(allFreeQuery, [], (err, rows) => {
-        res.setHeader('Content-Type', 'text/json');
-        res.send(rows)
-    })
 })
 
 app.get('/getTable/:scanId', (req, res) => {
     console.log("scan from " + req.params.scanId)
-    client.scan(req.params.scanId, "match", "Row*", function (err, replies) {
+    
+    client.scan(req.params.scanId, "match", "ROW*", function (err, replies) {
         if(!err){
             var result = [];
             var keyValue = {}
@@ -132,19 +141,26 @@ app.get('/getTable/:scanId', (req, res) => {
             result.push(replies[0]) // scan index
             var queryTotal = 0
             var keys = replies[1]
+            
+            if(keys.length == 0)
+            {
+                result.push(keyValue)
+                res.setHeader('Content-Type', 'text/json');
+                res.send(result)
+                return
+            }
             keys.forEach(key => {
                 client.get(key, function(err, reply) {
                     if(!err)
                     {
                         keyValue[key] = reply
                         queryTotal++
-                        console.log(queryTotal + "/" + keys.length)
-                        console.log(queryTotal == keys.length)
                         if(queryTotal == keys.length)
                         {
                             result.push(keyValue)
                             res.setHeader('Content-Type', 'text/json');
                             res.send(result)
+                            return
                         }
                     }
                 })
