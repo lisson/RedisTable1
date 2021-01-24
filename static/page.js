@@ -2,10 +2,15 @@ var TitleToColumnMapping = [];
 var Titles;
 const focusOutEvent = new Event('focusout');
 
+function UpdateTable()
+{
+    _UpdateTable(0)
+}
+
 // Actual Redis keys are ROW:<int>
 // But we're going to avoid using : in DOM id field so it'll be converted to ROW_<int>
 
-function UpdateTable(startingIndex)
+function _UpdateTable(startingIndex)
 {
     var mainTable = document.getElementById("mainTable")
 
@@ -13,7 +18,7 @@ function UpdateTable(startingIndex)
     var currentIndex = startingIndex
 
     var xmlHttp = new XMLHttpRequest();
-    xmlHttp.open( "GET", "getTable/" + currentIndex, false ); // false for synchronous request
+    xmlHttp.open( "GET", "getKeyValues/" + currentIndex, false ); // false for synchronous request
     xmlHttp.send( null );
 
     let data = JSON.parse(xmlHttp.responseText)
@@ -49,11 +54,11 @@ function UpdateTable(startingIndex)
             databox.addEventListener("click", deleteRowHandler, false);
             rowObject.appendChild(databox)
         }
+
         var b = rowObject.children[TitleToColumnMapping[titleid]]
-        
         if(b === null)
         {
-            return
+            continue
         }
         b.textContent = value;
     };
@@ -117,7 +122,7 @@ function main()
     }
     console.log(TitleToColumnMapping)
 
-    UpdateTable(0)
+    UpdateTable()
 }
 
 function tableBoxDataHandler()
