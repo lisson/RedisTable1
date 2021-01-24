@@ -11,32 +11,6 @@ class RedisTableQuery {
         this.password = password
     }
 
-    GetKeys(offset, pattern, callback)
-    {
-        var self = this
-        self.client.scan(offset, "match", pattern, function (err, replies) {
-            if(!err){
-                logger.debug("RedisTableQuery::GetKeys " + replies)
-                var nextOffset = replies[0]
-
-                if(nextOffset == 0)
-                { 
-                    callback(replies[1])
-                }
-                else
-                {
-                    self.GetKeys(nextOffset, pattern, function (nextKeys)  {
-                        callback(replies[1].concat(nextKeys))
-                    })
-                }
-            }
-            else
-            {
-                callback(null)
-            }
-        })
-    }
-
     Connect()
     {
         logger.info("RedisTableQuery::Connecting to redis.")
@@ -47,14 +21,55 @@ class RedisTableQuery {
     DeleteKey(pattern)
     {
         var self = this
-        this.GetKeys(0, pattern, function (reply) {
+        this.GetKeys(0, pattern, function (err, reply) {
+            if(reply == null)
+            {
+                return
+            }
             (reply).forEach(element => {
                 self.client.del(element)           
             });
         })
     }
     
-    InsertKeyValue(key, value)
+    GetKeys(offset, pattern, callback)
+    {
+        var self = this
+        self.client.scan(offset, "match", pattern, function (err, replies) {
+            if(!err){
+                logger.debug("RedisTableQuery::GetKeys " + replies)
+                var nextOffset = replies[0]
+
+                if(nextOffset == 0)
+                { 
+                    callback(err, replies[1])
+                }
+                else
+                {
+                    self.GetKeys(nextOffset, pattern, function (err, nextKeys)  {
+                        callback(err, replies[1].concat(nextKeys))
+                    })
+                }
+            }
+            else
+            {
+                callback(err, null)
+            }
+        })
+    }
+
+    GetKeysPromise(offset, pattern)
+    {
+        var self = this
+        return new Promise((resolve, reject) => {
+            this.GetKeys(offset, pattern, function(err, result) {
+                if (err) reject(err);
+                else resolve(result);
+            });
+        });
+    }
+
+    InsertKeyValuePromise(key, value)
     {
         return new Promise((resolve, reject) => {
             this.client.set(key, value, function(err, result) {
@@ -64,7 +79,7 @@ class RedisTableQuery {
         });
     }
 
-    KeyExists(key)
+    KeyExistsPromise(key)
     {
         return new Promise((resolve, reject) => {
             this.client.exists(key, (err, result) => {
