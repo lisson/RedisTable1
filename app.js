@@ -26,58 +26,64 @@ var RowIncrementCounter = "RowIncrementCounter"
 var TitleIncrementCounter = "TitleIncrementCounter"
 var redisClient
 
-var titlesCounter = 0;
-
 function Init()
 {
     logger.info("Start.")
     redisClient = new RedisTableQuery("localhost", "","")
     redisClient.Connect()
-    // New item returns 1
-    // Existing item returns 0
-    // Ignore duplicate Titles
-    config.Columns.forEach(title => {
-        redisClient.GetKeys(0, "TITLE:*:" + title, function (results) {
-            if(!err)
-            {
-                if(results.length === 0)
-                {
-                    
-                }
-            }
-            logger.error(err)
-        })
-    });
-
-    client.exists(RowIncrementCounter, function(err, replies)
-    {
-        if(!err)
-        {
-            if(replies == "0")
-            {
-                console.log("Adding counter")
-                client.set(RowIncrementCounter,"0")
-            }
-        }
-    })
-
-
+    logger.info("Titles in config.json: " + config.Columns)
+    SetupTitles()
 }
 
 function SetupTitles()
 {
-    client.exists(TitleIncrementCounter, function(err, replies)
-    {
-        if(!err)
+    redisClient.KeyExistsPromise(TitleIncrementCounter).then(exists => {
+        if(!exists)
         {
-            if(replies == "0")
-            {
-                console.log("Adding counter")
-                client.set(TitleIncrementCounter,"0")
-            }
+            redisClient.InsertKeyValuePromise(TitleIncrementCounter, "0").then(x => {
+                return x
+            }).catch(err => {
+                logger.err("Unable to insert key " + TitleIncrementCounter)
+                logger.err(err)
+                process.exit(1)
+            })
+        }
+        return true
+    }).then(x => {
+        if(x)
+        {
+            config.Columns.forEach(title => {
+                var key = "Title:*:" + title
+                redisClient.GetKeysPromise(0, key).then(k => {
+                    return k.length == 0
+                }).then(AddTitle => {
+                    if(AddTitle)
+                    {
+                        return redisClient.IncrementPromise(TitleIncrementCounter)
+                    }
+                    else
+                    {
+                        return -1
+                    }
+                }).then(currentCounter => {
+                    logger.info("Incremented Counter: " + currentCounter)
+                    if(currentCounter == -1)
+                    {
+                        logger.info("Title: " + title + " already exists. Skipping" )
+                        return false
+                    }
+                    var newKey = "Title:" + currentCounter + ":" + title
+                    return redisClient.InsertKeyValuePromise(newKey, 0).then(x => { return x }).catch(err => {
+                        logger.error("Insert Key error: " + err)
+                    })
+                }).then(result => {
+                    logger.info("Insert title result: " + result)
+                }).catch(err => {
+                    logger.error(key + " error: " + err)
+                })
+            })
         }
     })
-
     
 }
 

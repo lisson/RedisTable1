@@ -60,9 +60,18 @@ class RedisTableQuery {
 
     GetKeysPromise(offset, pattern)
     {
-        var self = this
         return new Promise((resolve, reject) => {
             this.GetKeys(offset, pattern, function(err, result) {
+                if (err) reject(err);
+                else resolve(result);
+            });
+        });
+    }
+
+    GetTitlesPromise()
+    {
+        return new Promise((resolve, reject) => {
+            this.GetKeys(offset, "Title:*", function(err, result) {
                 if (err) reject(err);
                 else resolve(result);
             });
@@ -79,12 +88,22 @@ class RedisTableQuery {
         });
     }
 
+    IncrementPromise(counterKey)
+    {
+        return new Promise((resolve, reject) => {
+            this.client.multi().incr(counterKey).exec(function(err, replies) {
+                if(err) reject(err);
+                else resolve(replies)
+            })
+        })
+    }
+
     KeyExistsPromise(key)
     {
         return new Promise((resolve, reject) => {
             this.client.exists(key, (err, result) => {
               if (err) reject(err);
-              else resolve(result);
+              else resolve(result == 1);
             });
         });
     }

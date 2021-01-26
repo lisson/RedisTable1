@@ -13,13 +13,19 @@ redisClient.GetKeysPromise(0, "KEY*").then(result => {
     console.log("PROMISED KEYS: " + result)
 })
 
-redisClient.InsertKeyValue("TestKey1", "", function(err, reply){
+redisClient.InsertKeyValuePromise("TestKey1", "0").then(reply => {
     console.log(reply)
 })
 
+redisClient.IncrementPromise("TestKey1").then(x => { return x }).then(reply => {
+    console.log("IncrementedValue: " + reply)
+})
+
 redisClient.KeyExistsPromise("TestKey1").then(result => {
-    console.log(result)
+    console.log("Key exists: " + result)
 }).catch(error => {console.log(error)});
 
-redisClient.DeleteKey("TestKey1")
+redisClient.DeleteKey("Title:*")
+
+
 
