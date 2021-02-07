@@ -2,11 +2,13 @@ var winston = require('winston')
 var logger = winston.createLogger({
     transports: [
         new winston.transports.Console({
-            level:'info'
+            level:'info',
+            timestamp: true
         }),
         new winston.transports.File({
             filename: './log.log',
-            level: 'info'
+            level: 'info',
+            timestamp: true
         })
     ]
 });

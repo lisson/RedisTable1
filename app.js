@@ -52,37 +52,69 @@ function SetupTitles()
     }).then(x => {
         if(x)
         {
-            config.Columns.forEach(title => {
-                var key = "Title:*:" + title
-                redisClient.GetKeysPromise(0, key).then(k => {
-                    return k.length == 0
-                }).then(AddTitle => {
-                    if(AddTitle)
-                    {
-                        return redisClient.IncrementPromise(TitleIncrementCounter)
-                    }
-                    else
-                    {
-                        return -1
-                    }
-                }).then(currentCounter => {
-                    logger.info("Incremented Counter: " + currentCounter)
-                    if(currentCounter == -1)
-                    {
-                        logger.info("Title: " + title + " already exists. Skipping" )
-                        return false
-                    }
-                    var newKey = "Title:" + currentCounter + ":" + title
-                    return redisClient.InsertKeyValuePromise(newKey, 0).then(x => { return x }).catch(err => {
-                        logger.error("Insert Key error: " + err)
+            return new Promise((resolve, reject) => {
+                var counter=0
+                config.Columns.forEach(title => {
+                    var key = "Title:*:" + title
+                    redisClient.GetAllKeysPromise(key).then(k => {
+                        return k.length === 0
+                    }).then(AddTitle => {
+                        if(AddTitle)
+                        {
+                            return redisClient.IncrementPromise(TitleIncrementCounter)
+                        }
+                        else
+                        {
+                            return -1
+                        }
+                    }).then(currentCounter => {
+                        logger.info("Incremented Counter: " + currentCounter)
+                        if(currentCounter == -1)
+                        {
+                            logger.info("Title: " + title + " already exists. Skipping" )
+                            return false
+                        }
+                        var newKey = "Title:" + currentCounter + ":" + title
+                        return redisClient.InsertKeyValuePromise(newKey, 0).then(x => { return x }).catch(err => {
+                            logger.error("Insert Key error: " + err)
+                        })
+                    }).then(result => {
+                        logger.info("Insert title result: " + result)
+                        counter++
+                        if(counter === config.Columns.length)
+                        {
+                            logger.info("Done inserting titles into database.")
+                            resolve(true);
+                        }
+                    }).catch(err => {
+                        logger.error(key + " error: " + err)
+                        reject(false);
                     })
-                }).then(result => {
-                    logger.info("Insert title result: " + result)
-                }).catch(err => {
-                    logger.error(key + " error: " + err)
                 })
             })
         }
+    }).then(titleSetupOk => {
+        if(titleSetupOk)
+        {
+            // Populate titles variable
+            redisClient.GetAllKeysPromise("Title:*").then(results => {
+                (results).forEach(t => {
+                    var entry = {}
+                    var p = t.split(":") // [0] is Title, [1] is index, [2] is title name Title:[index]:[name]
+                    entry.TitleIndex = p[1]
+                    entry.Value = p[2]
+                    titles.push(entry)
+                })
+                titles.forEach(t => {
+                    logger.info(t.TitleIndex + " " + t.Value)
+                })
+                
+            }).catch(err => {
+                logger.err(err)
+            })
+        }
+    }).catch(err => {
+        logger.err(err);
     })
     
 }
@@ -130,17 +162,22 @@ app.post('/deleteRow', (req, res) => {
 })
 
 app.get('/getKeyValues/:scanId', (req, res) => {
-    console.log("scan from " + req.params.scanId)
-    
-    redisClient.GetKeyValues(req.params.scanId, "ROW*")
+    logger.info("scan from " + req.params.scanId)
+    var result = {}
+    redisClient.GetKeysPromise(req.params.scanId, "Row*")
     .then((data) => {
-        console.log(data)
+        result["redisIndex"] = data[0]
+        return redisClient.GetKeyValuesPromise(data[1])
+    }).then((data) => {
+        result["values"] = data;
         res.setHeader('Content-Type', 'text/json');
-        res.send(data)
-    }).catch(
+        res.send(JSON.stringify(result))
+        logger.debug("Responded with : " + result)
+    })
+    .catch(
         err => {
             console.log(err)
-        })
+    })
 })
 
 app.get('/titles', (req, res) => {

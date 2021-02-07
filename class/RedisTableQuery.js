@@ -21,7 +21,7 @@ class RedisTableQuery {
     DeleteKey(pattern)
     {
         var self = this
-        this.GetKeys(0, pattern, function (err, reply) {
+        this.GetAllKeys(0, pattern, function (err, reply) {
             if(reply == null)
             {
                 return
@@ -31,8 +31,8 @@ class RedisTableQuery {
             });
         })
     }
-    
-    GetKeys(offset, pattern, callback)
+
+    GetAllKeys(offset, pattern, callback)
     {
         var self = this
         self.client.scan(offset, "match", pattern, function (err, replies) {
@@ -46,7 +46,7 @@ class RedisTableQuery {
                 }
                 else
                 {
-                    self.GetKeys(nextOffset, pattern, function (err, nextKeys)  {
+                    self.GetAllKeys(nextOffset, pattern, function (err, nextKeys)  {
                         callback(err, replies[1].concat(nextKeys))
                     })
                 }
@@ -58,24 +58,70 @@ class RedisTableQuery {
         })
     }
 
+    GetAllKeysPromise(pattern)
+    {
+        return new Promise((resolve, reject) => {
+            this.GetAllKeys(0, pattern, function (err, replies) {
+                if(!err)
+                    resolve(replies)
+                else
+                    reject(err)
+            });
+        });
+    }
+
     GetKeysPromise(offset, pattern)
     {
         return new Promise((resolve, reject) => {
-            this.GetKeys(offset, pattern, function(err, result) {
+            this.client.scan(offset, "match", pattern, function (err, replies) {
+                if(!err)
+                    resolve(replies)
+                else
+                    reject(err)
+            });
+        });
+    }
+
+    GetKeyValuesPromise(keys)
+    {
+        return new Promise((resolve, reject) => {
+            var result = {};
+            var counter = 0;
+            (keys).forEach(key => {
+                this.GetValuePromise(key).then(value => {
+                    result[key] = value;
+                    counter++
+                    if(keys.length === counter)
+                    {
+                        resolve(result)
+                    }
+                }).catch(err => {
+                    reject(err)
+                })
+            })
+        })
+    }
+
+    GetTitlesPromise()
+    {
+        return new Promise((resolve, reject) => {
+            this.GetAllKeys(offset, "Title:*", function(err, result) {
                 if (err) reject(err);
                 else resolve(result);
             });
         });
     }
 
-    GetTitlesPromise()
+    GetValuePromise(key)
     {
         return new Promise((resolve, reject) => {
-            this.GetKeys(offset, "Title:*", function(err, result) {
-                if (err) reject(err);
-                else resolve(result);
+            this.client.get(key, function(err, result) {
+                if(!err)
+                    resolve(result)
+                else
+                    reject(err)
             });
-        });
+        })
     }
 
     InsertKeyValuePromise(key, value)

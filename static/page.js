@@ -18,54 +18,56 @@ function _UpdateTable(startingIndex)
     var currentIndex = startingIndex
 
     var xmlHttp = new XMLHttpRequest();
-    xmlHttp.open( "GET", "getKeyValues/" + currentIndex, false ); // false for synchronous request
-    xmlHttp.send( null );
-
-    let data = JSON.parse(xmlHttp.responseText)
-    console.log(data);
+    xmlHttp.open("GET", "getKeyValues/" + currentIndex);
     
-    for (const [key, value] of Object.entries(data[1]))
-    {
-        rowid = key.split(":")[1]
-        titleid = key.split(":")[2]
-        console.log(rowid)
-        var rowObject = mainTable.querySelector("#ROW_" + rowid);
-        console.log(rowObject);
-        if(rowObject == null)
-        {
-            console.log("Inserting new row");
-            rowObject = document.createElement("tr")
-            rowObject.id = "ROW_" + rowid;
-            mainTable.appendChild(rowObject);
-            for(i=0;i<Titles.childElementCount;i++)
-            {
-                var databox = document.createElement("td")
-                databox.dataset.titleid = Titles.children[i].textContent.trim()
-                databox.className = "dataValue";
-                databox.contentEditable = true;
-                databox.addEventListener("input", tableBoxDataHandler, false);
-                databox.addEventListener("focusout", focusOutHandler, false);
-                databox.addEventListener("keypress", databoxKeyPressHandler, false);
-                rowObject.appendChild(databox);
-            }
-            databox = document.createElement("td")
-            databox.textContent = "x"
-            databox.className = "DeleteRowButtonClass"
-            databox.addEventListener("click", deleteRowHandler, false);
-            rowObject.appendChild(databox)
-        }
+    xmlHttp.onreadystatechange = function() {
+        let data = JSON.parse(xmlHttp.responseText)
+        console.log(data);
 
-        var b = rowObject.children[TitleToColumnMapping[titleid]]
-        if(b === null)
+        for (const [key, value] of Object.entries(data[1]))
         {
-            continue
+            rowid = key.split(":")[1]
+            titleid = key.split(":")[2]
+            console.log(rowid)
+            var rowObject = mainTable.querySelector("#ROW_" + rowid);
+            console.log(rowObject);
+            if(rowObject == null)
+            {
+                console.log("Inserting new row");
+                rowObject = document.createElement("tr")
+                rowObject.id = "ROW_" + rowid;
+                mainTable.appendChild(rowObject);
+                for(i=0;i<Titles.childElementCount;i++)
+                {
+                    var databox = document.createElement("td")
+                    databox.dataset.titleid = Titles.children[i].textContent.trim()
+                    databox.className = "dataValue";
+                    databox.contentEditable = true;
+                    databox.addEventListener("input", tableBoxDataHandler, false);
+                    databox.addEventListener("focusout", focusOutHandler, false);
+                    databox.addEventListener("keypress", databoxKeyPressHandler, false);
+                    rowObject.appendChild(databox);
+                }
+                databox = document.createElement("td")
+                databox.textContent = "x"
+                databox.className = "DeleteRowButtonClass"
+                databox.addEventListener("click", deleteRowHandler, false);
+                rowObject.appendChild(databox)
+            }
+
+            var b = rowObject.children[TitleToColumnMapping[titleid]]
+            if(b === null)
+            {
+                continue
+            }
+            b.textContent = value;
+        };
+        if(data[0] != 0)
+        {
+            UpdateTable(data[0])
         }
-        b.textContent = value;
-    };
-    if(data[0] != 0)
-    {
-        UpdateTable(data[0])
     }
+    xmlHttp.send();
 }
 
 window.addEventListener('DOMContentLoaded', (event) => {

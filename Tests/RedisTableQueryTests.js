@@ -4,13 +4,22 @@ var redisClient = new RedisTableQuery("localhost", "","")
 
 redisClient.Connect()
 
-redisClient.GetKeys(0,"KEY*", function (err, result)
+redisClient.GetAllKeys(0,"KEY*", function (err, result)
 {
     console.log("Got Keys: " + result)
 })
 
-redisClient.GetKeysPromise(0, "KEY*").then(result => {
+redisClient.GetAllKeysPromise("KEY*").then(result => {
     console.log("PROMISED KEYS: " + result)
+})
+
+redisClient.GetKeysPromise(0, "KEY*").then(result => {
+    redisClient.GetKeyValuesPromise(result[1]).then(x => {
+        console.log("Key Value Pairs: ")
+        console.log(x)
+    }).catch(err => {
+        console.log(err)
+    })
 })
 
 redisClient.InsertKeyValuePromise("TestKey1", "0").then(reply => {
