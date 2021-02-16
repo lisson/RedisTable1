@@ -13,13 +13,13 @@ redisClient.GetAllKeysPromise("KEY*").then(result => {
     console.log("PROMISED KEYS: " + result)
 })
 
-redisClient.GetKeysPromise(0, "KEY*").then(result => {
-    redisClient.GetKeyValuesPromise(result[1]).then(x => {
-        console.log("Key Value Pairs: ")
-        console.log(x)
-    }).catch(err => {
+redisClient.GetKeysPromise(0, "Row*").then(result => {
+        return redisClient.GetKeyValuesPromise(result[1]) 
+}).then(x => {
+    console.log("Key Value Pairs: ")
+    console.log(x)
+}).catch(err => {
         console.log(err)
-    })
 })
 
 redisClient.InsertKeyValuePromise("TestKey1", "0").then(reply => {

@@ -163,16 +163,15 @@ app.post('/deleteRow', (req, res) => {
 
 app.get('/getKeyValues/:scanId', (req, res) => {
     logger.info("scan from " + req.params.scanId)
-    var result = {}
-    redisClient.GetKeysPromise(req.params.scanId, "Row*")
-    .then((data) => {
-        result["redisIndex"] = data[0]
-        return redisClient.GetKeyValuesPromise(data[1])
+    result = {}
+    redisClient.GetKeysPromise(req.params.scanId, "Row*").then(keys => {
+        result["RedisIndex"] = keys[0]
+        return redisClient.GetKeyValuesPromise(keys[1]);
     }).then((data) => {
-        result["values"] = data;
-        res.setHeader('Content-Type', 'text/json');
+        result["KeyValues"] = data
+        res.set('Content-Type', 'application/json');
         res.send(JSON.stringify(result))
-        logger.debug("Responded with : " + result)
+        logger.debug("Responded with : " + JSON.stringify(result))
     })
     .catch(
         err => {

@@ -7,83 +7,12 @@ function UpdateTable()
     _UpdateTable(0)
 }
 
-// Actual Redis keys are ROW:<int>
-// But we're going to avoid using : in DOM id field so it'll be converted to ROW_<int>
-
-function _UpdateTable(startingIndex)
-{
-    var mainTable = document.getElementById("mainTable")
-
-    // Populate the table
-    var currentIndex = startingIndex
-
-    var xmlHttp = new XMLHttpRequest();
-    xmlHttp.open("GET", "getKeyValues/" + currentIndex);
-    
-    xmlHttp.onreadystatechange = function() {
-        let data = JSON.parse(xmlHttp.responseText)
-        console.log(data);
-
-        for (const [key, value] of Object.entries(data[1]))
-        {
-            rowid = key.split(":")[1]
-            titleid = key.split(":")[2]
-            console.log(rowid)
-            var rowObject = mainTable.querySelector("#ROW_" + rowid);
-            console.log(rowObject);
-            if(rowObject == null)
-            {
-                console.log("Inserting new row");
-                rowObject = document.createElement("tr")
-                rowObject.id = "ROW_" + rowid;
-                mainTable.appendChild(rowObject);
-                for(i=0;i<Titles.childElementCount;i++)
-                {
-                    var databox = document.createElement("td")
-                    databox.dataset.titleid = Titles.children[i].textContent.trim()
-                    databox.className = "dataValue";
-                    databox.contentEditable = true;
-                    databox.addEventListener("input", tableBoxDataHandler, false);
-                    databox.addEventListener("focusout", focusOutHandler, false);
-                    databox.addEventListener("keypress", databoxKeyPressHandler, false);
-                    rowObject.appendChild(databox);
-                }
-                databox = document.createElement("td")
-                databox.textContent = "x"
-                databox.className = "DeleteRowButtonClass"
-                databox.addEventListener("click", deleteRowHandler, false);
-                rowObject.appendChild(databox)
-            }
-
-            var b = rowObject.children[TitleToColumnMapping[titleid]]
-            if(b === null)
-            {
-                continue
-            }
-            b.textContent = value;
-        };
-        if(data[0] != 0)
-        {
-            UpdateTable(data[0])
-        }
-    }
-    xmlHttp.send();
-}
-
 window.addEventListener('DOMContentLoaded', (event) => {
     main()
 });
 
 function main()
 {
-    var dataItems = document.getElementsByClassName("dataValue");
-    Array.prototype.forEach.call(dataItems, function(item) {
-        item.addEventListener("input", tableDataHandler, false);
-        item.addEventListener("focusout", focusOutHandler, false);
-        item.addEventListener("keypress", databoxKeyPressHandler, false);
-    });
-
-    var mainTable = document.getElementById("mainTable");
     Titles = document.getElementById("title")
 
     document.getElementById("addButton").addEventListener('click', function (event) {
@@ -99,21 +28,6 @@ function main()
                 row.id = "ROW_" + r.lastID;
             }
         }
-
-        var row = document.createElement("tr");
-        for(var i = 0; i < mainTable.dataset.columns; i++)
-        {
-            var d = document.createElement("td")
-            d.contentEditable = "True"
-            d.addEventListener("input", tableBoxDataHandler, false);
-            d.addEventListener("focusout", focusOutHandler, false);
-            d.addEventListener("keypress", databoxKeyPressHandler, false);
-            d.className = "dataValue"
-            d.dataset.titleid = Titles.children[i].textContent
-            row.appendChild(d)
-        }
-        mainTable.appendChild(row)
-
         xmlHttp.send();
         this.disabled=false;
     });
@@ -163,4 +77,98 @@ function deleteRowHandler()
     xmlHttp.setRequestHeader("Content-Type", "application/json");
     xmlHttp.send(payload);
     this.parentNode.remove()
+}
+
+// Actual Redis keys are ROW:<int>
+// But we're going to avoid using : in DOM id field so it'll be converted to ROW_<int>
+
+function _UpdateTable(startingIndex)
+{
+    console.log("Updating table from index: " + startingIndex)
+    var mainTable = document.getElementById("mainTable")
+
+    // Populate the table
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.onreadystatechange = function() {
+        if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+        {
+            console.log("Response: " + xmlHttp.getResponseHeader('content-type'))
+            console.log(xmlHttp.responseText)
+            if(xmlHttp.responseText === "")
+            {
+                return
+            }
+            let data = JSON.parse(xmlHttp.responseText.toString())
+
+            for (const [key, value] of Object.entries(data.KeyValues))
+            {
+                rowid = key.split(":")[1]
+                titleid = key.split(":")[2]
+                var rowObject = mainTable.querySelector("#ROW_" + rowid);
+                if(rowObject == null)
+                {
+                    console.log("Inserting new row");
+                    rowObject = document.createElement("tr")
+                    rowObject.id = "ROW_" + rowid;
+                    mainTable.appendChild(rowObject);
+                    var rowNumberBox = document.createElement("td")
+                    rowNumberBox.textContent = rowid;
+                    rowObject.append(rowNumberBox)
+                    for(i=0;i<Titles.childElementCount;i++)
+                    {
+                        var databox = _createDataValueBox(Titles.children[i].textContent.trim())
+                        rowObject.appendChild(databox);
+                    }
+                    var deleteBox = _createDeleteBox()
+                    rowObject.appendChild(deleteBox)
+                }
+
+                if(TitleToColumnMapping[titleid] == null)
+                {
+                    // Title that doesn't exist
+                    continue
+                }
+                var b = rowObject.children[TitleToColumnMapping[titleid]]
+                if(b === null)
+                {
+                    continue
+                }
+                b.textContent = value;
+            }
+            if(data.RedisIndex > 0)
+            {
+                _UpdateTable(data.RedisIndex);
+            }
+        }
+    }
+    xmlHttp.open("GET", "getKeyValues/" + startingIndex);
+    xmlHttp.send();
+}
+
+function _createDataValueBox(TitleId)
+{
+    var databox = document.createElement("td")
+    databox.dataset.titleid = TitleId
+    databox.className = "dataValue";
+    databox.contentEditable = true;
+    databox.addEventListener("input", tableBoxDataHandler, false);
+    databox.addEventListener("focusout", focusOutHandler, false);
+    databox.addEventListener("keypress", databoxKeyPressHandler, false);
+    return databox
+}
+
+function _createDataValueBoxContent(TitleId, textContent)
+{
+    var databox = _createDataValueBox(TitleId)
+    databox.textContent = textContent
+    return databox
+}
+
+function _createDeleteBox()
+{
+    var deleteBox = document.createElement("td")
+    deleteBox.textContent = "x"
+    deleteBox.className = "DeleteRowButtonClass"
+    deleteBox.addEventListener("click", deleteRowHandler, false);
+    return deleteBox
 }

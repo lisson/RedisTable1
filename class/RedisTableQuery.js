@@ -87,6 +87,10 @@ class RedisTableQuery {
         return new Promise((resolve, reject) => {
             var result = {};
             var counter = 0;
+            if(keys.length === 0)
+            {
+                resolve(result)
+            }
             (keys).forEach(key => {
                 this.GetValuePromise(key).then(value => {
                     result[key] = value;
