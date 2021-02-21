@@ -33,6 +33,22 @@ function Init()
     redisClient.Connect()
     logger.info("Titles in config.json: " + config.Columns)
     SetupTitles()
+    redisClient.KeyExistsPromise(RowIncrementCounter).then(exists => {
+        if(!exists)
+        {
+            redisClient.InsertKeyValuePromise(RowIncrementCounter, "0").then(x => {
+                return x
+            }).catch(err => {
+                logger.err("Unable to insert key " + RowIncrementCounter)
+                logger.err(err)
+                process.exit(1)
+            })
+        }
+    }).catch(err => {
+        logger.err("KeyExists check error:" + RowIncrementCounter)
+        logger.err(err)
+        process.exit(1)
+    })
 }
 
 function SetupTitles()
@@ -127,19 +143,21 @@ const port = 3000;
 
 app.get('/', (req, res) => {
     res.statusCode = 200;
-    res.send(mustache.render(DefaultTemplate, {title: titles, columns: titles.length}));
+    res.send(mustache.render(DefaultTemplate, {title: titles, ColumnsCount: titles.length}));
 });
 
 app.post('/addRow', (req, res) => {
-    client.multi().incr(RowIncrementCounter).get(RowIncrementCounter).exec(function(err, replies)
+    redisClient.IncrementPromise(RowIncrementCounter).then(rowid => 
     {
-        if(err)
-        {
-            res.status(400).send("Database error.")
-            console.log(err)
-        }
         res.setHeader('Content-Type', 'text/json');
-        res.send({"lastID": replies[1]})
+        res.send({"lastID": rowid})
+        return redisClient.InsertKeyValuePromise("Row:" + rowid + ":" + titles[0].Value, "newvalue")
+    }).then(x => {
+        console.log(x);
+    })
+    .catch(err => {
+        res.status(400).send("Database error.")
+        console.log(err)
     })
 });
 

@@ -22,10 +22,16 @@ function main()
         xmlHttp.open("POST", "/addRow");
         xmlHttp.setRequestHeader("Content-Type", "application/json");
         xmlHttp.onreadystatechange = function() {
-            if (xmlHttp.readyState == XMLHttpRequest.DONE) {
+            if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+            {
                 var r = JSON.parse(xmlHttp.responseText);
-                console.log(r);
-                row.id = "ROW_" + r.lastID;
+                var mainTable = document.getElementById("mainTable")
+                var newRow = _createRow(r.lastID);
+                if(newRow == null)
+                {
+                    return
+                }
+                mainTable.appendChild(newRow)
             }
         }
         xmlHttp.send();
@@ -108,19 +114,12 @@ function _UpdateTable(startingIndex)
                 if(rowObject == null)
                 {
                     console.log("Inserting new row");
-                    rowObject = document.createElement("tr")
-                    rowObject.id = "ROW_" + rowid;
-                    mainTable.appendChild(rowObject);
-                    var rowNumberBox = document.createElement("td")
-                    rowNumberBox.textContent = rowid;
-                    rowObject.append(rowNumberBox)
-                    for(i=0;i<Titles.childElementCount;i++)
+                    rowObject = _createRow(rowid)
+                    if(rowObject == null)
                     {
-                        var databox = _createDataValueBox(Titles.children[i].textContent.trim())
-                        rowObject.appendChild(databox);
+                        continue
                     }
-                    var deleteBox = _createDeleteBox()
-                    rowObject.appendChild(deleteBox)
+                    mainTable.appendChild(rowObject)
                 }
 
                 if(TitleToColumnMapping[titleid] == null)
@@ -171,4 +170,27 @@ function _createDeleteBox()
     deleteBox.className = "DeleteRowButtonClass"
     deleteBox.addEventListener("click", deleteRowHandler, false);
     return deleteBox
+}
+
+function _createRow(RowId)
+{
+    if(RowId == null)
+    {
+        return null
+    }
+    console.log("Creating new Row " + RowId);
+    rowObject = document.createElement("tr")
+    rowObject.id = "ROW_" + RowId;
+    var rowNumberBox = document.createElement("td")
+    rowNumberBox.textContent = RowId;
+    rowObject.append(rowNumberBox)
+    var mainTable = document.getElementById("mainTable")
+    for(i=0;i<mainTable.dataset.columnscount;i++)
+    {
+        var databox = _createDataValueBox(Titles.children[i].textContent.trim())
+        rowObject.appendChild(databox);
+    }
+    var deleteBox = _createDeleteBox()
+    rowObject.appendChild(deleteBox)
+    return rowObject
 }
