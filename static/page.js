@@ -54,6 +54,7 @@ function tableBoxDataHandler()
 
 function focusOutHandler()
 {
+    console.log("Updating " + this.parentNode.id);
     var RowId = this.parentNode.id.replace("_",":")
     var key = RowId+":"+this.dataset.titleid.trim()
     console.log(this.textContent)
@@ -180,14 +181,14 @@ function _createRow(RowId)
     }
     console.log("Creating new Row " + RowId);
     rowObject = document.createElement("tr")
-    rowObject.id = "ROW_" + RowId;
+    rowObject.id = "Row_" + RowId;
     var rowNumberBox = document.createElement("td")
     rowNumberBox.textContent = RowId;
     rowObject.append(rowNumberBox)
     var mainTable = document.getElementById("mainTable")
     for(i=0;i<mainTable.dataset.columnscount;i++)
     {
-        var databox = _createDataValueBox(Titles.children[i].textContent.trim())
+        var databox = _createDataValueBox(Titles.children[i+1].textContent.trim())
         rowObject.appendChild(databox);
     }
     var deleteBox = _createDeleteBox()

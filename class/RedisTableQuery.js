@@ -1,4 +1,5 @@
 const { rejects } = require("assert");
+const { reject } = require("async");
 const { resolve } = require("path");
 const redis = require("redis");
 const util = require('util')
@@ -18,17 +19,20 @@ class RedisTableQuery {
         logger.info("RedisTableQuery::Connected")
     }
 
-    DeleteKey(pattern)
+    DeleteKeysPromise(pattern)
     {
-        var self = this
-        this.GetAllKeys(0, pattern, function (err, reply) {
-            if(reply == null)
-            {
-                return
-            }
-            (reply).forEach(element => {
-                self.client.del(element)           
-            });
+        return new Promise((resolve, reject) => {
+            this.GetAllKeysPromise(pattern).then(keys => {
+                (keys).forEach(key => {
+                    this.client.del(key, function (err, result){
+                        if(err)
+                        {
+                            reject(err)
+                        }
+                    })
+                })
+            })
+            resolve("OK")
         })
     }
 

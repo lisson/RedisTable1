@@ -162,21 +162,28 @@ app.post('/addRow', (req, res) => {
 });
 
 app.post('/insertDataValue', (req, res) => {
-    redisClient.InsertKeyValue(req.body.key, req.body.value, function(err, reply) {
+    logger.info("Setting " + req.body.key + " to " + req.body.value);
+    redisClient.InsertKeyValuePromise(req.body.key, req.body.value).then(x =>
+    {
+        res.setHeader('Content-Type', 'text/json')
+        res.send(x)
+    }).catch(err => {
         if(err)
         {
             res.status(400).send("Database error.")
             console.log(err)
         }
-        res.setHeader('Content-Type', 'text/json');
-        res.send(reply)
     });
 })
 
 app.post('/deleteRow', (req, res) => {
     console.log(req.body.key)
-    redisClient.DeleteKey(0, req.body.key + "*")
-    res.sendStatus(200)
+    redisClient.DeleteKeysPromise(req.body.key + "*").then(result => {
+        res.sendStatus(200)
+    }).catch(err => {
+        console.log(err)
+    })
+    
 })
 
 app.get('/getKeyValues/:scanId', (req, res) => {
