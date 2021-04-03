@@ -5,6 +5,7 @@ const focusOutEvent = new Event('focusout');
 function UpdateTable()
 {
     _UpdateTable(0)
+    $('#mainTable').DataTable();
 }
 
 window.addEventListener('DOMContentLoaded', (event) => {
@@ -25,7 +26,7 @@ function main()
             if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
             {
                 var r = JSON.parse(xmlHttp.responseText);
-                var mainTable = document.getElementById("mainTable")
+                var mainTable = document.getElementById("mainTableBody")
                 var newRow = _createRow(r.lastID);
                 if(newRow == null)
                 {
@@ -63,6 +64,7 @@ function focusOutHandler()
     xmlHttp.open("POST", "/insertDataValue");
     xmlHttp.setRequestHeader("Content-Type", "application/json");
     xmlHttp.send(payload);
+    $('#mainTable').DataTable();
     return
 }
 
@@ -92,7 +94,7 @@ function deleteRowHandler()
 function _UpdateTable(startingIndex)
 {
     console.log("Updating table from index: " + startingIndex)
-    var mainTable = document.getElementById("mainTable")
+    var mainTable = document.getElementById("mainTableBody")
 
     // Populate the table
     var xmlHttp = new XMLHttpRequest();
