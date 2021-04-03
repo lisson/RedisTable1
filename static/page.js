@@ -2,10 +2,36 @@ var TitleToColumnMapping = [];
 var Titles;
 const focusOutEvent = new Event('focusout');
 
+$.tablesort.defaults = {
+	compare: function(a, b) {		// Function used to compare values when sorting.
+        if(isNumber(a) && isNumber(b))
+        {
+            a = parseInt(a)
+            b = parseInt(b)
+        }
+		if (a > b) {
+			return 1;
+		} else if (a < b) {
+			return -1;
+		} else {
+			return 0;
+		}
+	}
+};
+
+function isNumber(a)
+{
+    if(a.length === 0)
+    {
+        return false
+    }
+    return !isNaN(a)
+}
+
 function UpdateTable()
 {
     _UpdateTable(0)
-    $('#mainTable').DataTable();
+    $("#mainTable").tablesort();
 }
 
 window.addEventListener('DOMContentLoaded', (event) => {
@@ -64,7 +90,6 @@ function focusOutHandler()
     xmlHttp.open("POST", "/insertDataValue");
     xmlHttp.setRequestHeader("Content-Type", "application/json");
     xmlHttp.send(payload);
-    $('#mainTable').DataTable();
     return
 }
 
