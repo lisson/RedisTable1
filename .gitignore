@@ -1,5 +1,4 @@
-default.db
 *.sql
 node_modules
-.default.db
 log.log
+thirdparty/*

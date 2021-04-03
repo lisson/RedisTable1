@@ -1,15 +1,15 @@
 <html>
     <head>
         <script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-        <script type="text/javascript" src="static/jquery.tablesort.min.js"></script>
+        <script type="text/javascript" src="static/thirdparty/jquery.tablesort.min.js"></script>
         <script type="text/javascript" src="static/page.js"></script>
         <link rel="stylesheet" type="text/css" href="/static/page.css">
     </head>
     <body>
-        <table id="mainTable" data-columnscount="{{ColumnsCount}}" data-replace="jtable" data-search="true" data-locale="en">
+        <table id="mainTable" data-columnscount="{{ColumnsCount}}">
             <thead>
                 <tr id="title">
-                    <th>Row</th>
+                    <th class="default-sort">Row</th>
                     {{#title}}
                     <th id="title_{{TitleIndex}}">
                         {{Value}}

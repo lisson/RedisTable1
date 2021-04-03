@@ -28,9 +28,9 @@ function isNumber(a)
     return !isNaN(a)
 }
 
-function UpdateTable()
+async function UpdateTable()
 {
-    _UpdateTable(0)
+    var result = await _UpdateTable(0)
     $("#mainTable").tablesort();
 }
 
@@ -38,7 +38,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
     main()
 });
 
-function main()
+async function main()
 {
     Titles = document.getElementById("title")
 
@@ -71,7 +71,8 @@ function main()
     }
     console.log(TitleToColumnMapping)
 
-    UpdateTable()
+    await UpdateTable()
+    $("#mainTable").data('tablesort').sort($("th.default-sort"), null);
 }
 
 function tableBoxDataHandler()
@@ -118,58 +119,64 @@ function deleteRowHandler()
 
 function _UpdateTable(startingIndex)
 {
-    console.log("Updating table from index: " + startingIndex)
-    var mainTable = document.getElementById("mainTableBody")
+    return new Promise((resolve, reject) => {
+        console.log("Updating table from index: " + startingIndex)
+        var mainTable = document.getElementById("mainTableBody")
 
-    // Populate the table
-    var xmlHttp = new XMLHttpRequest();
-    xmlHttp.onreadystatechange = function() {
-        if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
-        {
-            console.log("Response: " + xmlHttp.getResponseHeader('content-type'))
-            console.log(xmlHttp.responseText)
-            if(xmlHttp.responseText === "")
+        // Populate the table
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.onreadystatechange = function() {
+            if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
             {
-                return
-            }
-            let data = JSON.parse(xmlHttp.responseText.toString())
-
-            for (const [key, value] of Object.entries(data.KeyValues))
-            {
-                rowid = key.split(":")[1]
-                titleid = key.split(":")[2]
-                var rowObject = mainTable.querySelector("#ROW_" + rowid);
-                if(rowObject == null)
+                console.log("Response: " + xmlHttp.getResponseHeader('content-type'))
+                console.log(xmlHttp.responseText)
+                if(xmlHttp.responseText === "")
                 {
-                    console.log("Inserting new row");
-                    rowObject = _createRow(rowid)
+                    reject(false)
+                }
+                let data = JSON.parse(xmlHttp.responseText.toString())
+
+                for (const [key, value] of Object.entries(data.KeyValues))
+                {
+                    rowid = key.split(":")[1]
+                    titleid = key.split(":")[2]
+                    var rowObject = mainTable.querySelector("#ROW_" + rowid);
                     if(rowObject == null)
+                    {
+                        console.log("Inserting new row");
+                        rowObject = _createRow(rowid)
+                        if(rowObject == null)
+                        {
+                            continue
+                        }
+                        mainTable.appendChild(rowObject)
+                    }
+
+                    if(TitleToColumnMapping[titleid] == null)
+                    {
+                        // Title that doesn't exist
+                        continue
+                    }
+                    var b = rowObject.children[TitleToColumnMapping[titleid]]
+                    if(b === null)
                     {
                         continue
                     }
-                    mainTable.appendChild(rowObject)
+                    b.textContent = value;
                 }
-
-                if(TitleToColumnMapping[titleid] == null)
+                if(data.RedisIndex > 0)
                 {
-                    // Title that doesn't exist
-                    continue
+                    resolve(_UpdateTable(data.RedisIndex));
                 }
-                var b = rowObject.children[TitleToColumnMapping[titleid]]
-                if(b === null)
+                else
                 {
-                    continue
+                    resolve(true);
                 }
-                b.textContent = value;
-            }
-            if(data.RedisIndex > 0)
-            {
-                _UpdateTable(data.RedisIndex);
             }
         }
-    }
-    xmlHttp.open("GET", "getKeyValues/" + startingIndex);
-    xmlHttp.send();
+        xmlHttp.open("GET", "getKeyValues/" + startingIndex);
+        xmlHttp.send();
+    })
 }
 
 function _createDataValueBox(TitleId)
