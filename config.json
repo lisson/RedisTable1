@@ -1,3 +1,20 @@
 {
-    "Columns" : ["State","Platform", "IP Address","InUsedBy"]
+    "Columns" : [ 
+        {
+            "Name": "Visible",
+            "Type": "Bool"
+        },
+        {
+            "Name": "State"
+        },
+        {
+            "Name": "Platform"
+        },
+        {
+            "Name": "IP Address"
+        },
+        {
+            "Name": "InUsedBy"
+        }
+    ]
 }

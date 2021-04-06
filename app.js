@@ -71,27 +71,26 @@ function SetupTitles()
             return new Promise((resolve, reject) => {
                 var counter=0
                 config.Columns.forEach(title => {
-                    var key = "Title:*:" + title
+                    var key = "Title:*:" + title.Name
                     redisClient.GetAllKeysPromise(key).then(k => {
-                        return k.length === 0
-                    }).then(AddTitle => {
-                        if(AddTitle)
+                        if( k.length === 0)
                         {
                             return redisClient.IncrementPromise(TitleIncrementCounter)
                         }
-                        else
-                        {
-                            return -1
-                        }
+                        return k[0].split(":")[1]
                     }).then(currentCounter => {
-                        logger.info("Incremented Counter: " + currentCounter)
                         if(currentCounter == -1)
                         {
                             logger.info("Title: " + title + " already exists. Skipping" )
                             return false
                         }
-                        var newKey = "Title:" + currentCounter + ":" + title
-                        return redisClient.InsertKeyValuePromise(newKey, 0).then(x => { return x }).catch(err => {
+                        var newKey = "Title:" + currentCounter + ":" + title.Name
+                        var titleType = title.Type
+                        if(titleType == null)
+                        {
+                            titleType = "string"
+                        }
+                        return redisClient.InsertKeyValuePromise(newKey, titleType).then(x => { return x }).catch(err => {
                             logger.error("Insert Key error: " + err)
                         })
                     }).then(result => {
